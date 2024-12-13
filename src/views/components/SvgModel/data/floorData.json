@@ -1,0 +1,254 @@
+[
+  {
+    "floorName": "1F",
+    "floorId": "1",
+    "rooms": [
+      {
+        "buildLabel": "主楼",
+        "roomDept": "1",
+        "roomDeptName": "机关车队、中控室"
+      },
+      {
+        "buildLabel": "西裙楼",
+        "roomDept": "1",
+        "roomDeptName": "员工餐厅"
+      },
+      {
+        "buildLabel": "东裙楼",
+        "roomDept": "1",
+        "roomDeptName": "电力展示厅"
+      }
+    ]
+  },
+  {
+    "floorName": "2F",
+    "floorId": "2",
+    "rooms": [
+      {
+        "buildLabel": "主楼",
+        "roomDept": "1",
+        "roomDeptName": "公安办"
+      },
+      {
+        "buildLabel": "",
+        "roomDept": "1",
+        "roomDeptName": "会议中心、总值班室"
+      },
+      {
+        "buildLabel": "东裙楼",
+        "roomDept": "1",
+        "roomDeptName": "华群物业管理分公司"
+      }
+    ]
+  },
+  {
+    "floorName": "3F",
+    "floorId": "3",
+    "rooms": [
+      {
+        "buildLabel": "主楼",
+        "roomDept": "1",
+        "roomDeptName": "党委党建部、工会办公室"
+      },
+      {
+        "buildLabel": "",
+        "roomDept": "1",
+        "roomDeptName": "信息通信分公司"
+      },
+      {
+        "buildLabel": "西裙楼",
+        "roomDept": "1",
+        "roomDeptName": "职工活动中心"
+      },
+      {
+        "buildLabel": "",
+        "roomDept": "1",
+        "roomDeptName": "综合服务中心离退休服务室"
+      },
+      {
+        "buildLabel": "东裙楼",
+        "roomDept": "1",
+        "roomDeptName": "信息通信机房"
+      }
+    ]
+  },
+  {
+    "floorName": "4F",
+    "floorId": "4",
+    "rooms": [
+      {
+        "buildLabel": "",
+        "roomDept": "1",
+        "roomDeptName": "电力调度中心(地区调度班)"
+      },
+      {
+        "buildLabel": "",
+        "roomDept": "1",
+        "roomDeptName": "计量室 (采集运行一班)"
+      }
+    ]
+  },
+  {
+    "floorName": "5F",
+    "floorId": "5",
+    "rooms": [
+      {
+        "buildLabel": "",
+        "roomDept": "1",
+        "roomDeptName": "档案室、阅档室"
+      }
+    ]
+  },
+  {
+    "floorName": "6F",
+    "floorId": "6",
+    "rooms": [
+      {
+        "buildLabel": "",
+        "roomDept": "1",
+        "roomDeptName": "综合服务中心综合管理室"
+      },
+      {
+        "buildLabel": "",
+        "roomDept": "信通",
+        "roomDeptName": "信息通信分公司"
+      }
+    ]
+  },
+  {
+    "floorName": "7F",
+    "floorId": "7",
+    "rooms": [
+      {
+        "buildLabel": "",
+        "roomDept": "1",
+        "roomDeptName": "运维检修部、审计部"
+      }
+    ]
+  },
+  {
+    "floorName": "8F",
+    "floorId": "8",
+    "rooms": [
+      {
+        "buildLabel": "",
+        "roomDept": "1",
+        "roomDeptName": "建设部、经济技术研究所"
+      }
+    ]
+  },
+  {
+    "floorName": "9F",
+    "floorId": "9",
+    "rooms": [
+      {
+        "buildLabel": "",
+        "roomDept": "1",
+        "roomDeptName": "财务资产部（共享服务中心）"
+      }
+    ]
+  },
+  {
+    "floorName": "10F",
+    "floorId": "10",
+    "rooms": [
+      {
+        "buildLabel": "",
+        "roomDept": "1",
+        "roomDeptName": "发展策划部、经济技术研究所"
+      },
+      {
+        "buildLabel": "",
+        "roomDept": "1",
+        "roomDeptName": "监察部(纪委办公室）"
+      },
+      {
+        "buildLabel": "",
+        "roomDept": "1",
+        "roomDeptName": "物资部"
+      }
+    ]
+  },
+  {
+    "floorName": "11F",
+    "floorId": "11",
+    "rooms": [
+      {
+        "buildLabel": "",
+        "roomDept": "1",
+        "roomDeptName": "公司领导"
+      }
+    ]
+  },
+  {
+    "floorName": "12F",
+    "floorId": "12",
+    "rooms": [
+      {
+        "buildLabel": "",
+        "roomDept": "1",
+        "roomDeptName": "人力资源部(党委组织部）"
+      }
+    ]
+  },
+  {
+    "floorName": "15F",
+    "floorId": "15",
+    "rooms": [
+      {
+        "buildLabel": "",
+        "roomDept": "1",
+        "roomDeptName": "科技互联网部、安全监察部"
+      }
+    ]
+  },
+  {
+    "floorName": "16F",
+    "floorId": "16",
+    "rooms": [
+      {
+        "buildLabel": "",
+        "roomDept": "1",
+        "roomDeptName": "办公室、党委宣传部"
+      }
+    ]
+  },
+  {
+    "floorName": "17F",
+    "floorId": "17",
+    "rooms": [
+      {
+        "buildLabel": "",
+        "roomDept": "1",
+        "roomDeptName": "公司领导、办公室"
+      }
+    ]
+  },
+  {
+    "floorName": "18F",
+    "floorId": "18",
+    "rooms": [
+      {
+        "buildLabel": "",
+        "roomDept": "1",
+        "roomDeptName": "值班室、备用"
+      }
+    ]
+  },
+  {
+    "floorName": "19F",
+    "floorId": "19",
+    "rooms": [
+      {
+        "buildLabel": "",
+        "roomDept": "1",
+        "roomDeptName": "电力调度控制中心"
+      },
+      {
+        "buildLabel": "",
+        "roomDept": "1",
+        "roomDeptName": "供电服务指挥中心"
+      }
+    ]
+  }
+]
