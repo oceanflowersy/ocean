@@ -1,0 +1,5 @@
+// 入口 SCSS 文件，用于导入其他 SCSS 文件
+/*********** Base 基础 ************/
+@import 'base/reset';
+
+@import 'mixins/index';
