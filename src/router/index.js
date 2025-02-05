@@ -11,14 +11,7 @@ const routes = [
   {
     path: '/cmp',
     name: 'cmp',
-    children: [
-      {
-        path: '/SvgModel',
-        name: 'SvgModel',
-        meta: { title: 'Svg模型', isMenu: true },
-        component: () => import('@/views/components/SvgModel/index.vue')
-      }
-    ]
+    children: []
   }
 ];
 
