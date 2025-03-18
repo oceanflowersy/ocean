@@ -16,10 +16,12 @@ const myComponents = shallowRef({});
 const currentCmp = shallowRef(null);
 
 const defaultLeftTabs = [
+  { cmptitle: 'TreJs', cmpcode: 'TreJs' },
+  { cmptitle: 'Swiper', cmpcode: 'Swipers' },
+  { cmptitle: 'BMap离线地图', cmpcode: 'OffineBMap' },
   { cmptitle: '矿山可研', cmpcode: 'Diggings' },
   { cmptitle: 'ThreeJs 3D地图', cmpcode: 'ThreeJsMap' },
-  { cmptitle: 'SVG平面图', cmpcode: 'SvgModel' },
-  { cmptitle: 'BMap离线地图', cmpcode: 'OffineBMap' }
+  { cmptitle: 'SVG平面图', cmpcode: 'SvgModel' }
 ];
 const dragArea = ref(null);
 const tabShow = ref(false);
@@ -59,7 +61,6 @@ function init() {
             isDragging = true;
           }
 
-          console.log(moveEvent.clientX, moveEvent.clientY);
           // 执行拖动
           dragArea.value.style.left = moveEvent.clientX - innerX + 'px';
           dragArea.value.style.top = moveEvent.clientY - innerY + 'px';

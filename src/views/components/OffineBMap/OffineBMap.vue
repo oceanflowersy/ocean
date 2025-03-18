@@ -1,15 +1,33 @@
 <template>
-  <div id="map_canvas" style="width: 600px; height: 500px"></div>
+  <div id="bmapPage">
+    <BMap
+      :restrict-center="true"
+      :api-url="bMap.apiUrl"
+      enable-scroll-wheel-zoom
+      :center="bMap.mapCenter"
+      height="100%"
+      :zoom="bMap.mapZoom"
+      :min-zoom="bMap.minZoom"
+      :max-zoom="bMap.maxZoom"
+      @initd="bMap.bMapInit"
+      @dragend="bMap.handleBMapDragend"
+      @zoomend="bMap.handleZoomEnd">
+    </BMap>
+  </div>
 </template>
 
 <script setup>
-const BMapGLLib = window.BMapGLLib;
-var map = new BMapGL.Map('map_canvas');
-var poi = new BMapGL.Point(116.307852, 40.057031);
-console.log(BMapGLLib.InfoBox);
+import { BMap } from 'vue3-baidu-map-gl';
+import { useBMap } from './index';
+
+const bMap = reactive(useBMap());
 </script>
 
 <style lang="scss" scoped>
+#bmapPage {
+  height: 100%;
+  width: 100%;
+}
 .map-body {
   position: relative;
   height: 500px;

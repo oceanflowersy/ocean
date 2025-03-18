@@ -26,4 +26,22 @@ onMounted(() => {
   width: 100%;
   height: 100%;
 }
+
+.Tooltip-label {
+  width: 0px;
+  height: 0px;
+  position: relative;
+}
+.Tooltip-lable-content {
+  width: 200px;
+  height: 35px;
+  line-height: 35px;
+  text-align: center;
+  color: white;
+  position: absolute;
+  top: -4px;
+  left: -4px;
+  background-size: contain;
+  background-repeat: no-repeat;
+}
 </style>

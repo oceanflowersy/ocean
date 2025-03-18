@@ -16,7 +16,6 @@ var offmapcfg = {
   tiles_v_road_dir: '' //矢量路网的地址，为空默认在 offlinemap/tiles_v_road/ 目录
 };
 
-//
 var JS__FILE__ = document.currentScript ? document.currentScript.src : document.scripts[document.scripts.length - 1].src;
 offmapcfg.home = JS__FILE__.substr(0, JS__FILE__.lastIndexOf('/') + 1); //地图API主目录
 (function () {

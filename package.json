@@ -4,17 +4,22 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "serve": "vite",
+    "serve": "npm run change-modules && vite",
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "change-modules": "node ./scripts/change-modules.js"
   },
   "dependencies": {
+    "@tresjs/core": "^4.3.3",
     "@vueuse/core": "^10.11.0",
     "d3": "^7.9.0",
+    "element-plus": "^2.9.5",
     "normalize.css": "^8.0.1",
+    "three": "^0.174.0",
     "vue": "^3.4.15",
-    "vue-router": "^4.5.0"
+    "vue-router": "^4.5.0",
+    "vue3-baidu-map-gl": "^2.6.3"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.0.3",

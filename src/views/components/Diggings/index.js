@@ -27,7 +27,8 @@ export function useThreeModel() {
   const controller = ref(null);
   const mapCenter = [118.767413, 32.041544];
   const mapSize = 90;
-  const cameraPosArr = [{ x: 0, y: 0, z: 3 }];
+  const cameraPosArr = [{ x: 5, y: 5, z: 5 }];
+  // const cameraPosArr = [{ x: 0.8, y: 0.5, z: 1 }];
 
   const projection = d3.geoMercator().center(mapCenter).scale(mapSize).translate([0, 0]);
   const markers = [];
@@ -37,8 +38,87 @@ export function useThreeModel() {
   let outLineAnimationFrameID = null;
 
   const addGeometry = () => {
+    loadProtectGlb();
     loadGlb();
-    loadMarkerGlb();
+    // loadMarkerGlb();
+    addMarker();
+  };
+
+  let model = null;
+  let curve = null;
+  let progress = 0; // 物体运动时在运动路径的初始位置，范围0~1
+  const velocity = 0.001; // 影响运动速率的一个值，范围0~1，需要和渲染频率结合计算才能得到真正的速率
+  const loadProtectGlb = () => {
+    // 地面
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), new THREE.MeshPhongMaterial({ color: 0x999999, depthWrite: false }));
+    mesh.rotation.x = -Math.PI / 2;
+    mesh.receiveShadow = true;
+    scene.value.add(mesh);
+
+    const loader = new GLTFLoader();
+    loader.load('/public/static/Diggings/glbs/protect.glb', (gltf) => {
+      gltf.scene.scale.set(1, 1, 1);
+      gltf.scene.position.set(0, 0, 0);
+      gltf.scene.traverse(function (object) {
+        if (object.isMesh) {
+          object.castShadow = true; //阴影
+          object.receiveShadow = true; //接受别人投的阴影
+        }
+      });
+      model = gltf.scene;
+      scene.value.add(gltf.scene);
+    });
+    makeCurve();
+  };
+  const makeCurve = () => {
+    // Create a closed circular path around the stone
+    const radius = 5; // 半径，控制曲线的大小
+    const segments = 50; // 曲线分段数量
+    const center = new THREE.Vector3(0, 0, 0); // stone的位置，假设stone在原点
+
+    const points = [];
+    for (let i = 0; i < segments; i++) {
+      const angle = (i / segments) * Math.PI * 2; // 环绕路径的角度
+      const x = radius * Math.cos(angle); // X坐标
+      const z = radius * Math.sin(angle); // Z坐标
+      points.push(new THREE.Vector3(x, 0, z)); // 根据半径计算每个点的坐标
+    }
+
+    curve = new THREE.CatmullRomCurve3(points); // 创建曲线
+    curve.curveType = 'catmullrom';
+    curve.closed = true; // 让路径闭合
+
+    // 通过曲线创建一个Line对象作为参考线显示
+    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+    const material = new THREE.LineBasicMaterial({ color: 0x000000 });
+    const curveObject = new THREE.Line(geometry, material);
+
+    scene.value.add(curveObject);
+  };
+  // 物体沿线移动方法
+  const moveOnCurve = () => {
+    if (curve == null || model == null) {
+      console.log('Loading');
+    } else {
+      if (progress <= 1 - velocity) {
+        const point = curve.getPointAt(progress); // 获取当前点
+        const pointBox = curve.getPointAt(progress + velocity); // 获取下一个点
+
+        if (point && pointBox) {
+          model.position.set(point.x, point.y, point.z); // 设置模型位置
+
+          // 计算目标朝向
+          var targetPos = pointBox;
+          var mtx = new THREE.Matrix4();
+          mtx.lookAt(model.position, targetPos, model.up); // 设置朝向
+          model.quaternion.slerp(new THREE.Quaternion().setFromRotationMatrix(mtx), 0.2); // 旋转朝向
+        }
+
+        progress += velocity;
+      } else {
+        progress = 0; // 循环回到起始位置
+      }
+    }
   };
   // 加载本地glb模型
   const loadGlb = () => {
@@ -64,19 +144,67 @@ export function useThreeModel() {
       markers.push(group);
     });
   };
+  const addMarker = () => {
+    const texture = new THREE.TextureLoader().load('/public/static/Diggings/images/office_base.png');
+    const spriteMaterial = new THREE.SpriteMaterial({
+      map: texture //设置精灵纹理贴图
+    });
+    // 创建精灵模型对象，不需要几何体geometry参数
+    const sprite = new THREE.Sprite(spriteMaterial);
+    sprite.position.set(0, 0.5, 0); //设置位置，要考虑sprite尺寸影响
+    sprite.scale.set(0.2, 0.2, 0.2);
+    scene.value.add(sprite);
+    markers.push(sprite);
+  };
+  const TooltipLabelData = {
+    label: null,
+    line: null
+  };
   const addlabelDiv = (position, text) => {
+    // 创建真实dom用于挂载数据（此div在最外层仅起到标点作用）
     const div = document.createElement('div');
-    const labelDiv = document.createElement('div');
-    labelDiv.className = 'labelDiv';
-    labelDiv.textContent = text;
-    const label = new CSS2DObject(labelDiv);
-    label.position.set(0, 0.5, 0);
+    // 添加类名，方便书写css(写到这里，如果你前面没有添加css2D的渲染器，那么需要回到setRenderer中添加)
+    div.className = 'Tooltip-label';
+    // 创建真实dom，用于真正的渲染，位置用css控制
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'Tooltip-lable-content';
+    contentDiv.textContent = text;
+    // 设置背景
+    contentDiv.style.backgroundImage = 'url(/public/static/Diggings/images/label/1.png)';
+    div.appendChild(contentDiv);
+
+    // 将dom创建为mesh
+    const label = new CSS2DObject(div);
+    // 设置位置
+    const vector = new THREE.Vector3(0, 0.5, 0);
+    label.position.set(vector.x + 0.5, vector.y + 0.2, 0.5);
+    // label.position.set(0, 0.5, 0);
+    label.visible = true;
+
+    // 添加线模型（如果需要修改线和div的相对位置，到css中修改）
+    const lineGeometry = new THREE.BufferGeometry();
+    // 设置点
+    lineGeometry.setFromPoints([
+      { x: vector.x, y: vector.y, z: vector.z + 0.05 },
+      { x: vector.x + 0.2, y: vector.y + 0.2, z: 0.5 },
+      { x: vector.x + 0.5, y: vector.y + 0.2, z: 0.5 }
+    ]);
+    // 设置线的颜色
+    const lineMaterial = new THREE.LineBasicMaterial({
+      color: '#6ebd24'
+    });
+    // 生成线
+    const line = new THREE.Line(lineGeometry, lineMaterial);
+    // 将生成的线和label保存下来，方便后续修改
+    TooltipLabelData.label = label;
+    TooltipLabelData.line = line;
     scene.value.add(label);
+    scene.value.add(line);
   };
 
   // 坐标轴辅助线
   const axisHelper = () => {
-    const axesHelper = new THREE.AxesHelper(150);
+    const axesHelper = new THREE.AxesHelper(20);
     scene.value.add(axesHelper);
   };
   const onPointerMove = (event) => {
@@ -110,23 +238,23 @@ export function useThreeModel() {
     const height = mapContainer.value.clientHeight;
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
-    // mapContainer.value.addEventListener(
-    //   'click',
-    //   (event) => {
-    //     const px = event.offsetX;
-    //     const py = event.offsetY;
-    //     //屏幕坐标px、py转WebGL标准设备坐标x、y
-    //     const x = (px / width) * 2 - 1;
-    //     const y = -(py / height) * 2 + 1;
-    //     // 计算射线 形象点说就是在点击位置创建一条射线，射线穿过的模型代表选中
-    //     raycaster.setFromCamera(new THREE.Vector2(x, y), camera.value);
-    //     const intersects = raycaster.intersectObjects(markers);
-    //     if (intersects.length > 0) {
-    //       addlabelDiv(intersects[0].object.position, intersects[0].object.name);
-    //     }
-    //   },
-    //   false
-    // );
+    mapContainer.value.addEventListener(
+      'click',
+      (event) => {
+        const px = event.offsetX;
+        const py = event.offsetY;
+        //屏幕坐标px、py转WebGL标准设备坐标x、y
+        const x = (px / width) * 2 - 1;
+        const y = -(py / height) * 2 + 1;
+        // 计算射线 形象点说就是在点击位置创建一条射线，射线穿过的模型代表选中
+        raycaster.setFromCamera(new THREE.Vector2(x, y), camera.value);
+        const intersects = raycaster.intersectObjects(markers);
+        if (intersects.length > 0) {
+          addlabelDiv(intersects[0].object.position, intersects[0].object.name);
+        }
+      },
+      false
+    );
 
     mapContainer.value.addEventListener('pointermove', onPointerMove);
   };
@@ -154,8 +282,32 @@ export function useThreeModel() {
   };
   // 灯光效果初始化
   const lightInit = () => {
-    const ambientLight = new THREE.AmbientLight(0x404040, 1);
-    scene.value.add(ambientLight);
+    // const ambientLight = new THREE.AmbientLight(0x404040, 1);
+    // scene.value.add(ambientLight);
+
+    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444);
+    hemiLight.position.set(0, 10, 0);
+    scene.value.add(hemiLight);
+
+    // 创建一个虚拟的球形网格 Mesh 的辅助对象来模拟 半球形光源 HemisphereLight.
+    const hemiLighthelper = new THREE.HemisphereLightHelper(hemiLight, 5);
+    scene.value.add(hemiLighthelper);
+
+    // 平行光
+    // const directionalLight = new THREE.DirectionalLight(0xffffff);
+    // directionalLight.castShadow = true;
+    // directionalLight.shadow.camera.near = 0.5;
+    // directionalLight.shadow.camera.far = 50;
+    // directionalLight.shadow.camera.left = -10;
+    // directionalLight.shadow.camera.right = 10;
+    // directionalLight.shadow.camera.top = 10;
+    // directionalLight.shadow.camera.bottom = -10;
+    // directionalLight.position.set(0, 5, 5);
+    // scene.value.add(directionalLight);
+
+    // // // 用于模拟场景中平行光 DirectionalLight 的辅助对象. 其中包含了表示光位置的平面和表示光方向的线段.
+    // const directionalLightHelper = new THREE.DirectionalLightHelper(directionalLight, 5);
+    // scene.value.add(directionalLightHelper);
   };
   // 控制器初始化
   const controllerInit = () => {
@@ -184,14 +336,14 @@ export function useThreeModel() {
   // 场景初始化
   const sceneInit = () => {
     scene.value = new THREE.Scene();
-    scene.value.background = new THREE.Color('rgb(110, 141, 54)');
+    // scene.value.background = new THREE.Color('rgb(110, 141, 54)');
   };
   const animate = () => {
     if (outLineAnimationFrameID) {
       cancelAnimationFrame(outLineAnimationFrameID);
     }
     outLineAnimationFrameID = requestAnimationFrame(animate);
-
+    moveOnCurve();
     renderer.value.render(toRaw(scene.value), camera.value);
     cssRenderer.value.render(toRaw(scene.value), camera.value);
     edgeShineComposer.render();
