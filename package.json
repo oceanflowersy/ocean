@@ -11,6 +11,9 @@
     "change-modules": "node ./scripts/change-modules.js"
   },
   "dependencies": {
+    "@antv/x6": "^2.18.1",
+    "@antv/x6-vue-shape": "^2.1.2",
+    "@tresjs/cientos": "^4.2.0",
     "@tresjs/core": "^4.3.3",
     "@vueuse/core": "^10.11.0",
     "d3": "^7.9.0",

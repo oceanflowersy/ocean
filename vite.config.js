@@ -12,6 +12,17 @@ export default defineConfig(({ mode }) => {
   const BASE_URL = env.VITE_APP_BASE_URL;
 
   return {
+    // Electron 构建配置
+    base: './',
+    build: {
+      outDir: '../wing-pack/dist/renderer',
+      emptyOutDir: true,
+      rollupOptions: {
+        output: {
+          manualChunks: undefined
+        }
+      }
+    },
     plugins: [
       vue({
         ...templateCompilerOptions
@@ -45,7 +56,7 @@ export default defineConfig(({ mode }) => {
       open: true,
       proxy: {
         [BASE_URL]: {
-          target: `http://192.168.0.108:12346${BASE_URL}`,
+          target: `http://localhost:8080${BASE_URL}`,
           changeOrigin: true, // 表示请求头中的 Origin 字段将被修改为目标服务器的地址
           secure: false, // 表示代理会允许不安全的 https 请求
           rewrite: (path) => path.replace(new RegExp(`^${BASE_URL}`), '')

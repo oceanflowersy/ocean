@@ -7,7 +7,11 @@
         </template>
       </div>
     </div>
-    <component :is="currentCmp"></component>
+    <Suspense>
+      <div style="height: 100%">
+        <component :is="currentCmp"></component>
+      </div>
+    </Suspense>
   </div>
 </template>
 
@@ -16,6 +20,8 @@ const myComponents = shallowRef({});
 const currentCmp = shallowRef(null);
 
 const defaultLeftTabs = [
+  { cmptitle: 'Pack', cmpcode: 'Pack' },
+  { cmptitle: 'TreJAntvX6s', cmpcode: 'AntvX6' },
   { cmptitle: 'TreJs', cmpcode: 'TreJs' },
   { cmptitle: 'Swiper', cmpcode: 'Swipers' },
   { cmptitle: 'BMap离线地图', cmpcode: 'OffineBMap' },
