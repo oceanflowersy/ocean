@@ -1,6 +1,6 @@
 import { createRouter, createWebHashHistory } from 'vue-router';
 import index from '@/views/index/index.vue';
-import PackTool from '@/views/components/Pack/PackTool.vue';
+import PackTool from '@/views/components/PackTool/PackTool.vue';
 
 const routes = [
   {
@@ -10,8 +10,8 @@ const routes = [
     children: []
   },
   {
-    path: '/pack',
-    name: 'pack',
+    path: '/packtool',
+    name: 'packtool',
     component: PackTool
   },
   {

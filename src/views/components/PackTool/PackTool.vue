@@ -198,19 +198,59 @@
         <!-- 日志输出区域 -->
         <section class="log-section">
           <div class="log-header">
-            <h3>📋 日志输出</h3>
-            <div class="log-actions">
-              <button class="btn-stop" @click="stopBuild">⏹ 终止</button>
+            <div class="log-title-group">
+              <h3>{{ rightToolMode === 'log' ? '日志输出' : 'AES 加解密' }}</h3>
+              <div class="right-tool-tabs">
+                <button
+                  :class="{ active: rightToolMode === 'log' }"
+                  @click="rightToolMode = 'log'"
+                >日志</button>
+                <button
+                  :class="{ active: rightToolMode === 'crypto' }"
+                  @click="rightToolMode = 'crypto'"
+                >AES</button>
+              </div>
+            </div>
+            <div v-if="rightToolMode === 'log'" class="log-actions">
+              <button class="btn-stop" @click="stopBuild">终止</button>
               <button class="btn-clear" @click="clearLogs">清空</button>
             </div>
+            <div v-else class="log-actions">
+              <button class="btn-copy-result" @click="copyCryptoResult">复制结果</button>
+              <button class="btn-clear" @click="clearCryptoTool">清空</button>
+            </div>
           </div>
-          <div class="log-container" ref="logContainer">
+          <div v-if="rightToolMode === 'log'" class="log-container" ref="logContainer">
             <div
               v-for="(log, index) in logs"
               :key="index"
               :class="['log-item', `log-${log.type}`]"
             >
               {{ log.message }}
+            </div>
+          </div>
+          <div v-else class="crypto-tool">
+            <div class="crypto-field">
+              <label>输入</label>
+              <textarea
+                v-model="cryptoInput"
+                placeholder="输入明文进行加密，或输入 Base64 密文进行解密"
+              ></textarea>
+            </div>
+            <div class="crypto-actions">
+              <button class="btn-encrypt" @click="runAesEncrypt">加密</button>
+              <button class="btn-decrypt" @click="runAesDecrypt">解密</button>
+              <span v-if="cryptoStatus" :class="['crypto-status', cryptoStatus.type]">
+                {{ cryptoStatus.message }}
+              </span>
+            </div>
+            <div class="crypto-field crypto-output-field">
+              <label>结果</label>
+              <textarea
+                v-model="cryptoOutput"
+                readonly
+                placeholder="加密或解密结果会显示在这里"
+              ></textarea>
             </div>
           </div>
         </section>
@@ -237,8 +277,10 @@
               <div
                 v-for="file in warFiles"
                 :key="file.path"
-                :class="['war-file-card', { 'is-latest': file.path === latestWarFile }]"
+                :class="['war-file-card', { 'is-latest': file.path === latestWarFile, 'is-selected-for-replace': file.path === selectedWarForReplace }]"
+                :title="file.path === selectedWarForReplace ? '已选为替换目标，再次点击取消' : '点击选为替换目标'"
                 :draggable="true"
+                @click="toggleSelectWarForReplace(file)"
                 @dragstart="handleFileDragStart(file, $event)"
                 @contextmenu.prevent="showFileContextMenu(file, $event)"
               >
@@ -249,7 +291,8 @@
                     <span class="file-time">{{ formatFileTime(file.mtime) }}</span>
                   </div>
                 </div>
-                <div v-if="file.path === latestWarFile" class="latest-badge">最新</div>
+                <div v-if="file.path === selectedWarForReplace" class="selected-badge"></div>
+                <div v-else-if="file.path === latestWarFile" class="latest-badge">最新</div>
               </div>
             </div>
           </div>
@@ -410,6 +453,12 @@ const replaceFileForm = ref({
 const logs = ref([]);
 const logContainer = ref(null);
 
+// 右侧工具面板
+const rightToolMode = ref('log');
+const cryptoInput = ref('');
+const cryptoOutput = ref('');
+const cryptoStatus = ref(null);
+
 // NVM 版本管理
 const nvmVersions = ref([]);
 const nvmLoading = ref(false);
@@ -469,6 +518,7 @@ const isBuilding = ref(false);
 // War包管理
 const warFiles = ref([]);
 const latestWarFile = ref('');
+const selectedWarForReplace = ref(''); // 用户选中的待替换 war/jar 文件路径
 
 // 加载项目列表
 const loadProfiles = async (autoNvm = false) => {
@@ -505,6 +555,8 @@ const loadCurrentProfile = async (autoNvm = false) => {
       }
       // 确保 nvmVersion 有默认值
       if (!profile.nvmVersion) profile.nvmVersion = '21.0.0';
+      // 确保 lastWarName 有默认值（记忆上次打包的 war/jar 文件名）
+      if (!profile.lastWarName) profile.lastWarName = '';
       currentConfig.value = { ...profile };
       addLog('info', `✓ 已加载项目: ${profile.name}`);
       if (autoNvm) {
@@ -522,6 +574,7 @@ const switchProfile = async () => {
     try {
       await window.electronAPI.setActiveProfile(currentProfileId.value);
       await loadCurrentProfile(true); // 切换项目时自动执行 nvm use
+      selectedWarForReplace.value = ''; // 切换项目时清空已选 war
       await loadWarFiles();
       addLog('success', '✓ 项目切换成功');
     } catch (error) {
@@ -849,8 +902,8 @@ const replaceConfigInWar = async () => {
     return;
   }
 
-  if (!currentConfig.value.backendPath) {
-    addLog('warning', '请先配置后台项目路径');
+  if (!currentConfig.value.outputPath) {
+    addLog('warning', '请先配置 War 包输出路径');
     return;
   }
 
@@ -868,15 +921,23 @@ const replaceConfigInWar = async () => {
 
   if (window.electronAPI && window.electronAPI.replaceConfigInWar) {
     try {
-      addLog('info', '正在查找打包文件...');
-      addLog('info', `开始替换配置文件...`);
+      // 确定目标 war 文件：优先使用用户手动选中的，否则取列表第一个（最新），否则报错提示
+      let targetWarPath = selectedWarForReplace.value;
+      if (!targetWarPath && warFiles.value.length > 0) {
+        targetWarPath = warFiles.value[0].path;
+      }
+      if (!targetWarPath) {
+        addLog('warning', '未找到可替换的 war/jar 文件，请先打包或在右侧列表中点击选择目标文件');
+        return;
+      }
+
+      addLog('info', `开始替换配置文件: ${targetWarPath.split(/[\\/]/).pop()}...`);
 
       // 转换为纯 JavaScript 对象，避免 IPC 序列化错误
-      const plainBackendPath = currentConfig.value.backendPath;
       const plainConfiguredFiles = JSON.parse(JSON.stringify(toRaw(configuredFiles)));
 
-      // 直接传递后台项目路径，让后端自动查找 war/jar 文件
-      const result = await window.electronAPI.replaceConfigInWar(plainBackendPath, plainConfiguredFiles);
+      // 传递具体 war 文件路径，避免多项目共用输出目录时误选旧产物
+      const result = await window.electronAPI.replaceConfigInWar(targetWarPath, plainConfiguredFiles);
 
       if (result.success) {
         addLog('success', '✓ 配置文件替换完成！');
@@ -937,6 +998,56 @@ const clearLogs = () => {
   logs.value = [];
 };
 
+const setCryptoStatus = (type, message) => {
+  cryptoStatus.value = { type, message };
+  setTimeout(() => {
+    cryptoStatus.value = null;
+  }, 2500);
+};
+
+const runAesEncrypt = async () => {
+  if (!window.electronAPI?.aesEncrypt) {
+    setCryptoStatus('error', 'AES 功能不可用');
+    return;
+  }
+
+  cryptoOutput.value = await window.electronAPI.aesEncrypt(cryptoInput.value);
+  setCryptoStatus('success', cryptoOutput.value ? '加密完成' : '输入为空');
+};
+
+const runAesDecrypt = async () => {
+  if (!window.electronAPI?.aesDecrypt) {
+    setCryptoStatus('error', 'AES 功能不可用');
+    return;
+  }
+
+  cryptoOutput.value = await window.electronAPI.aesDecrypt(cryptoInput.value);
+  setCryptoStatus(
+    cryptoOutput.value ? 'success' : 'warning',
+    cryptoOutput.value ? '解密完成' : '解密失败或输入无效'
+  );
+};
+
+const copyCryptoResult = async () => {
+  if (!cryptoOutput.value) {
+    setCryptoStatus('warning', '没有可复制的结果');
+    return;
+  }
+
+  try {
+    await navigator.clipboard.writeText(cryptoOutput.value);
+    setCryptoStatus('success', '已复制');
+  } catch (e) {
+    setCryptoStatus('error', '复制失败，请手动复制');
+  }
+};
+
+const clearCryptoTool = () => {
+  cryptoInput.value = '';
+  cryptoOutput.value = '';
+  cryptoStatus.value = null;
+};
+
 // 终止打包
 const stopBuild = async () => {
   if (window.electronAPI && window.electronAPI.stopBuild) {
@@ -963,9 +1074,47 @@ const loadWarFiles = async () => {
   try {
     const files = await window.electronAPI.getWarFiles(currentConfig.value.outputPath);
     warFiles.value = files;
+    // 优先按记忆的 war 名称自动选中
+    if (currentConfig.value.lastWarName) {
+      const remembered = files.find(f => f.name === currentConfig.value.lastWarName);
+      if (remembered) {
+        selectedWarForReplace.value = remembered.path;
+        return;
+      }
+    }
+    // 若当前选中的 war 不在最新列表中（如切换了项目），则自动清空
+    if (selectedWarForReplace.value && !files.some(f => f.path === selectedWarForReplace.value)) {
+      selectedWarForReplace.value = '';
+    }
   } catch (error) {
     console.error('加载War包列表失败:', error);
     warFiles.value = [];
+  }
+};
+
+// 点击 war 文件卡片，选为替换目标（再次点击取消选中）
+const toggleSelectWarForReplace = (file) => {
+  selectedWarForReplace.value = selectedWarForReplace.value === file.path ? '' : file.path;
+};
+
+// 打包后记忆 war 包名称（若名称变化则更新并保存到 profile）
+const rememberWarName = async (warPath) => {
+  const newName = warPath.split(/[\\/]/).pop();
+  if (!newName) return;
+  selectedWarForReplace.value = warPath;
+  if (currentConfig.value.lastWarName !== newName) {
+    if (currentConfig.value.lastWarName) {
+      addLog('info', `📝 war 包名称已更新: ${currentConfig.value.lastWarName} → ${newName}`);
+    }
+    currentConfig.value.lastWarName = newName;
+    if (window.electronAPI) {
+      try {
+        const rawConfig = JSON.parse(JSON.stringify(toRaw(currentConfig.value)));
+        await window.electronAPI.updateProfile(rawConfig);
+      } catch (e) {
+        console.error('保存 lastWarName 失败:', e);
+      }
+    }
   }
 };
 
@@ -1111,11 +1260,15 @@ onMounted(async () => {
         await loadWarFiles();
         if (warFiles.value.length > 0) {
           latestWarFile.value = warFiles.value[0].path;
-          // 3秒后清除高亮
+          // 记忆 war 包名称（名称变化时自动更新并保存）
+          await rememberWarName(warFiles.value[0].path);
+          // 3秒后清除高亮（但保留选中状态）
           setTimeout(() => {
             latestWarFile.value = '';
           }, 3000);
         }
+        // 自动执行一次配置文件替换
+        await replaceConfigInWar();
       }, 500);
     });
 
@@ -1131,6 +1284,8 @@ onMounted(async () => {
         await loadWarFiles();
         if (data && data.filePath) {
           latestWarFile.value = data.filePath;
+          // 记忆 war 包名称（名称变化时自动更新并保存）
+          await rememberWarName(data.filePath);
           setTimeout(() => {
             latestWarFile.value = '';
           }, 3000);
@@ -1831,10 +1986,49 @@ padding-right: 92px;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 15px;
+    gap: 12px;
 
     h3 {
       margin: 0;
       color: #333;
+    }
+
+    .log-title-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .right-tool-tabs {
+      display: inline-flex;
+      padding: 3px;
+      border: 1px solid #d8dcef;
+      border-radius: 8px;
+      background: #f5f7ff;
+
+      button {
+        min-width: 52px;
+        padding: 5px 10px;
+        border: none;
+        border-radius: 6px;
+        background: transparent;
+        color: #5b647a;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+
+        &:hover {
+          color: #667eea;
+        }
+
+        &.active {
+          background: #667eea;
+          color: white;
+          box-shadow: 0 2px 6px rgba(102, 126, 234, 0.25);
+        }
+      }
     }
 
     .log-actions {
@@ -1868,6 +2062,21 @@ padding-right: 92px;
 
       &:hover {
         background: #ee5a52;
+      }
+    }
+
+    .btn-copy-result {
+      padding: 6px 12px;
+      background: #4caf50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+
+      &:hover {
+        background: #45a049;
       }
     }
   }
@@ -1923,6 +2132,121 @@ padding-right: 92px;
 
     &.log-error {
       color: #f44336;
+    }
+  }
+
+  .crypto-tool {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 14px;
+    border: 1px solid #e4e7f2;
+    border-radius: 8px;
+    background: #f8f9fc;
+  }
+
+  .crypto-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-height: 0;
+
+    label {
+      color: #333;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 120px;
+      resize: none;
+      padding: 12px;
+      border: 1px solid #d9ddeb;
+      border-radius: 6px;
+      background: white;
+      color: #222;
+      font-family: 'Consolas', 'Monaco', monospace;
+      font-size: 13px;
+      line-height: 1.5;
+      box-sizing: border-box;
+      outline: none;
+
+      &:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.12);
+      }
+
+      &[readonly] {
+        background: #fff;
+      }
+    }
+  }
+
+  .crypto-output-field {
+    flex: 1;
+
+    textarea {
+      flex: 1;
+      min-height: 120px;
+    }
+  }
+
+  .crypto-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 36px;
+
+    button {
+      padding: 8px 18px;
+      border: none;
+      border-radius: 6px;
+      color: white;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+
+      &:hover {
+        transform: translateY(-1px);
+      }
+    }
+
+    .btn-encrypt {
+      background: #667eea;
+
+      &:hover {
+        background: #5568d3;
+      }
+    }
+
+    .btn-decrypt {
+      background: #00a6a6;
+
+      &:hover {
+        background: #008f8f;
+      }
+    }
+  }
+
+  .crypto-status {
+    color: #666;
+    font-size: 13px;
+    font-weight: 600;
+
+    &.success {
+      color: #2e7d32;
+    }
+
+    &.warning {
+      color: #f57c00;
+    }
+
+    &.error {
+      color: #d32f2f;
     }
   }
 }
@@ -2087,6 +2411,12 @@ padding-right: 92px;
       animation: latestPulse 2s ease-in-out;
     }
 
+    &.is-selected-for-replace {
+      border-color: #ff9800;
+      background: linear-gradient(135deg, #fff8e1 0%, #ffe0b2 100%);
+      box-shadow: 0 0 0 2px rgba(255, 152, 0, 0.3);
+    }
+
     .file-info {
       flex: 1;
       width: 100%;
@@ -2140,6 +2470,19 @@ padding-right: 92px;
       font-size: 10px;
       font-weight: 600;
       box-shadow: 0 2px 4px rgba(76, 175, 80, 0.3);
+    }
+
+    .selected-badge {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      background: #ff9800;
+      color: white;
+      padding: 2px 6px;
+      border-radius: 10px;
+      font-size: 10px;
+      font-weight: 600;
+      box-shadow: 0 2px 4px rgba(255, 152, 0, 0.3);
     }
 
 

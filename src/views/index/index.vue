@@ -20,7 +20,8 @@ const myComponents = shallowRef({});
 const currentCmp = shallowRef(null);
 
 const defaultLeftTabs = [
-  { cmptitle: 'Pack', cmpcode: 'Pack' },
+  { cmptitle: 'Stagehand', cmpcode: 'Stagehand' },
+  { cmptitle: 'PackTool', cmpcode: 'PackTool' },
   { cmptitle: 'TreJAntvX6s', cmpcode: 'AntvX6' },
   { cmptitle: 'TreJs', cmpcode: 'TreJs' },
   { cmptitle: 'Swiper', cmpcode: 'Swipers' },

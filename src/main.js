@@ -11,5 +11,5 @@ app.mount('#app');
 
 // 如果在 Electron 环境中，默认导航到打包工具页面
 if (window.electronAPI) {
-  router.push('/pack');
+  router.push('/packtool');
 }
