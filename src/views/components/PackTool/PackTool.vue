@@ -1,5 +1,5 @@
 <template>
-  <div class="pack-tool-container">
+  <div class="pack-tool-container tool-page">
     <!-- <header class="header">
       <h1>🚀 WingPack 项目打包工具</h1>
     </header> -->
@@ -177,16 +177,16 @@
         <!-- 打包操作 -->
         <section class="build-section">
           <div class="button-group">
-            <button class="btn-build btn-frontend" @click="buildFrontend">
+            <button class="btn-build btn-frontend tool-action-button tool-action-green" @click="buildFrontend">
               📦 打包前台
             </button>
-            <button class="btn-build btn-backend" @click="buildBackend">
+            <button class="btn-build btn-backend tool-action-button tool-action-pink" @click="buildBackend">
               🔧 打包后台
             </button>
-            <button class="btn-build btn-all" @click="buildAll">
+            <button class="btn-build btn-all tool-action-button tool-action-sunset" @click="buildAll">
               🚀 全部打包
             </button>
-            <button class="btn-build btn-replace" @click="replaceConfigInWar">
+            <button class="btn-build btn-replace tool-action-button tool-action-mix" @click="replaceConfigInWar">
               🔄 更换配置
             </button>
           </div>

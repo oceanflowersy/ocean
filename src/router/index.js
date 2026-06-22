@@ -1,6 +1,7 @@
 import { createRouter, createWebHashHistory } from 'vue-router';
 import index from '@/views/index/index.vue';
 import PackTool from '@/views/components/PackTool/PackTool.vue';
+import RepairTool from '@/views/components/RepairTool/RepairTool.vue';
 
 const routes = [
   {
@@ -13,6 +14,11 @@ const routes = [
     path: '/packtool',
     name: 'packtool',
     component: PackTool
+  },
+  {
+    path: '/repair',
+    name: 'repair',
+    component: RepairTool
   },
   {
     path: '/cmp',
