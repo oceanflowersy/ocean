@@ -1,14 +1,5 @@
 <template>
   <div class="sql-tool tool-page">
-    <div class="function-switch">
-      <button :class="['mode-button', 'tool-action-button', 'tool-action-mix', { active: mode === 'convert' }]" @click="mode = 'convert'">
-        🗄️ SQL 文件转换
-      </button>
-      <button :class="['mode-button', 'tool-action-button', 'tool-action-green', { active: mode === 'sync' }]" @click="mode = 'sync'">
-        🔄 数据库同步
-      </button>
-    </div>
-
     <template v-if="mode === 'convert'">
       <div class="convert-layout">
         <section class="tool-card operation-card">
@@ -39,9 +30,12 @@
             <button class="tool-action-button tool-action-green" @click="showOutput">
               <el-icon><FolderOpened /></el-icon>定位输出文件
             </button>
+            <button class="tool-action-button tool-action-mix" :disabled="updating" @click="openUpdateDialog">
+              <el-icon><UploadFilled /></el-icon>{{ updating ? '更新中...' : '更新数据库' }}
+            </button>
           </div>
         </section>
-        <LogPanel :logs="logs" @clear="clearLogs" />
+        <ToolLogPanel :logs="logs" class="log-card" @clear="clearLogs" />
       </div>
     </template>
 
@@ -130,9 +124,41 @@
           </button>
         </main>
 
-        <LogPanel :logs="logs" @clear="clearLogs" />
+        <ToolLogPanel :logs="logs" class="log-card" @clear="clearLogs" />
       </div>
     </template>
+
+    <el-dialog v-model="updateDialogVisible" title="更新数据库" width="500px">
+      <el-form label-width="88px" hide-required-asterisk>
+        <el-form-item label="SQL 文件">
+          <el-input v-model="fileForm.outputPath" readonly />
+        </el-form-item>
+        <el-form-item label="目标连接">
+          <el-select v-model="updateConnectionId" placeholder="请选择数据库连接" class="full-width">
+            <el-option
+              v-for="connection in connections"
+              :key="connection.id"
+              :label="`${connection.name}  ${connectionAddress(connection)}`"
+              :value="connection.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="更新选项">
+          <el-checkbox v-model="backupBeforeUpdate">更新前备份当前数据库</el-checkbox>
+        </el-form-item>
+      </el-form>
+      <el-alert
+        v-if="backupBeforeUpdate"
+        title="备份文件将生成在转换后 SQL 文件的同一目录"
+        type="info"
+        :closable="false"
+        show-icon
+      />
+      <template #footer>
+        <el-button @click="updateDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="updating" @click="updateDatabase">开始更新</el-button>
+      </template>
+    </el-dialog>
 
     <el-dialog v-model="connectionDialogVisible" :title="editingConnectionId ? '编辑连接' : '新增连接'" width="520px" destroy-on-close>
       <el-form label-width="78px" hide-required-asterisk>
@@ -154,34 +180,24 @@
 </template>
 
 <script setup>
-import { computed, defineComponent, h, nextTick, onMounted, onUnmounted, reactive, ref } from 'vue';
-import { ElButton, ElMessage, ElMessageBox } from 'element-plus';
-import { Connection, DataAnalysis, Document, FolderOpened, Promotion, RefreshRight } from '@element-plus/icons-vue';
-
-const LogPanel = defineComponent({
-  props: { logs: { type: Array, required: true } },
-  emits: ['clear'],
-  setup(props, { emit }) {
-    return () => h('section', { class: 'tool-card log-card' }, [
-      h('div', { class: 'log-header' }, [
-        h('h2', { class: 'tool-card-title bar-title' }, '执行信息'),
-        h(ElButton, { type: 'danger', size: 'small', onClick: () => emit('clear') }, () => '清空'),
-      ]),
-      h('div', { class: 'tool-log' }, props.logs.map((log, index) =>
-        h('div', { key: index, class: ['log-line', `level-${log.level.toLowerCase()}`] }, `[${log.timestamp}] ${log.message}`),
-      )),
-    ]);
-  },
-});
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref } from 'vue';
+import { useRoute } from 'vue-router';
+import { ElMessage, ElMessageBox } from 'element-plus';
+import { Connection, DataAnalysis, Document, FolderOpened, Promotion, RefreshRight, UploadFilled } from '@element-plus/icons-vue';
+import ToolLogPanel from '../common/ToolLogPanel.vue';
 
 const pythonPath = 'E:\\Software\\Anaconda\\envs\\64V3.7\\python.exe';
-const mode = ref('convert');
+const route = useRoute();
+const mode = computed(() => (route.query.mode === 'sync' ? 'sync' : 'convert'));
 const executionMode = ref('script');
 const fileForm = reactive({ sourcePath: '', outputPath: '' });
 const connections = ref([]);
 const activeConnectionId = ref('');
 const connectionListRef = ref(null);
 const connectionDialogVisible = ref(false);
+const updateDialogVisible = ref(false);
+const updateConnectionId = ref('');
+const backupBeforeUpdate = ref(true);
 const editingConnectionId = ref('');
 const connectionDraft = reactive({ name: '', host: '127.0.0.1', port: 3306, user: 'root', password: '', database: '' });
 const manualSql = ref('');
@@ -189,6 +205,7 @@ const convertBeforeExecute = ref(true);
 const converting = ref(false);
 const testing = ref(false);
 const executing = ref(false);
+const updating = ref(false);
 const logs = ref([]);
 
 const activeConnection = computed(() => connections.value.find((item) => item.id === activeConnectionId.value) || null);
@@ -225,6 +242,33 @@ const convertSql = async () => {
 const showOutput = async () => {
   const result = await window.electronAPI?.showSqlOutput?.(fileForm.outputPath);
   if (!result?.success) ElMessage.error(result?.error || '无法定位输出文件');
+};
+
+const openUpdateDialog = () => {
+  if (!fileForm.outputPath) return ElMessage.warning('请先转换或选择输出 SQL 文件');
+  if (connections.value.length === 0) return ElMessage.warning('请先在数据库同步中新增连接');
+  updateConnectionId.value = activeConnectionId.value || connections.value[0].id;
+  updateDialogVisible.value = true;
+};
+
+const updateDatabase = async () => {
+  const connection = connections.value.find((item) => item.id === updateConnectionId.value);
+  if (!connection) return ElMessage.warning('请选择数据库连接');
+  updating.value = true;
+  try {
+    const result = await window.electronAPI?.updateDatabaseFromSql?.({
+      connection: { ...connection },
+      sqlPath: fileForm.outputPath,
+      backupBeforeUpdate: backupBeforeUpdate.value,
+    });
+    if (result?.canceled) return;
+    if (!result?.success) return ElMessage.error(result?.error || '数据库更新失败');
+    updateDialogVisible.value = false;
+    if (result.backupPath) addLog(`数据库备份文件: ${result.backupPath}`, 'SUCCESS');
+    ElMessage.success('数据库更新完成');
+  } finally {
+    updating.value = false;
+  }
 };
 
 const persistConnections = async () => {
@@ -304,8 +348,6 @@ onUnmounted(() => window.electronAPI?.removeSqlToolLogListeners?.());
 
 <style scoped lang="scss">
 .sql-tool { display: flex; flex-direction: column; gap: var(--tool-gap-lg); }
-.function-switch { display: flex; justify-content: center; gap: 28px; }
-.mode-button { width: 260px; opacity: 0.72; &.active { opacity: 1; outline: 2px solid rgba(255,255,255,.9); outline-offset: 2px; } }
 .convert-layout { display: grid; grid-template-columns: minmax(0,1.05fr) minmax(0,.95fr); gap: var(--tool-gap-lg); }
 .current-connection-bar { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-radius: 8px; background: rgba(255,255,255,.95); box-shadow: var(--tool-shadow); }
 .current-connection-bar div:first-child { display: flex; align-items: center; gap: 12px; }
@@ -341,7 +383,8 @@ onUnmounted(() => window.electronAPI?.removeSqlToolLogListeners?.());
 .file-summary { display: grid; gap: 12px; margin-top: 14px; padding: 16px; border: 1px solid #e0e4ec; border-radius: 8px; background: #f8f9fd; }
 .file-summary div { display: grid; grid-template-columns: 22px 72px minmax(0,1fr); gap: 8px; align-items: center; }
 .file-summary .el-icon,.file-summary strong { color: #6574e8; }
-.action-row { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; margin-top: auto; padding-top: 22px; }
+.action-row { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 16px; margin-top: auto; padding-top: 22px; }
+.full-width { width: 100%; }
 :deep(.bar-title::before) { content: ''; width: 4px; height: 22px; border-radius: 2px; background: #c4a7f3; }
 :deep(.tool-log) { min-height: 0; flex: 1; }
 :deep(.log-line) { white-space: pre-wrap; }
@@ -351,5 +394,5 @@ onUnmounted(() => window.electronAPI?.removeSqlToolLogListeners?.());
 :deep(.el-form-item__label) { color: #374151; font-weight: 700; }
 :deep(.el-input-number) { width: 100%; }
 @media (max-width: 1100px) { .database-workspace { grid-template-columns: 190px minmax(0,1fr); } .database-workspace .log-card { grid-column: 1 / -1; min-height: 300px; } }
-@media (max-width: 760px) { .convert-layout,.database-workspace { grid-template-columns: 1fr; } .function-switch { flex-direction: column; } .mode-button { width: 100%; } .current-connection-bar { align-items: flex-start; flex-direction: column; gap: 12px; } }
+@media (max-width: 760px) { .convert-layout,.database-workspace { grid-template-columns: 1fr; } .current-connection-bar { align-items: flex-start; flex-direction: column; gap: 12px; } }
 </style>

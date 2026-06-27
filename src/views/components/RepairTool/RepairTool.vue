@@ -1,20 +1,5 @@
 <template>
   <div class="repair-tool tool-page">
-    <div class="repair-switch">
-      <button
-        :class="['switch-button', 'tool-action-button', 'tool-action-green', { active: activeModule === 'cashier' }]"
-        @click="activeModule = 'cashier'"
-      >
-        🔧 收银检修
-      </button>
-      <button
-        :class="['switch-button', 'tool-action-button', 'tool-action-pink', { active: activeModule === 'material' }]"
-        @click="activeModule = 'material'"
-      >
-        📦 物资检修
-      </button>
-    </div>
-
     <template v-if="activeModule === 'cashier'">
       <el-form
         ref="repairFormRef"
@@ -194,36 +179,21 @@
             </div>
           </div>
 
-          <section class="tool-card log-card">
-            <div class="log-header">
-              <h2 class="tool-card-title bar-title">日志输出</h2>
-              <el-button type="danger" size="small" @click="clearLogs">清空</el-button>
-            </div>
-            <div ref="logContainer" class="tool-log">
-              <div
-                v-for="(log, index) in logs"
-                :key="index"
-                :class="['repair-log-line', `level-${log.level.toLowerCase()}`]"
-              >
-                [{{ log.timestamp }}] {{ log.message }}
-              </div>
-            </div>
-          </section>
+          <ToolLogPanel :logs="logs" class="log-card" @clear="clearLogs" />
         </div>
       </el-form>
     </template>
 
-    <section v-else class="tool-card material-placeholder">
-      <h2 class="tool-card-title"><el-icon class="title-icon"><Box /></el-icon>物资检修</h2>
-      <p>物资检修功能预留中。</p>
-    </section>
+    <MaterialRepair v-else />
   </div>
 </template>
 
 <script setup>
-import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { useRoute } from 'vue-router';
+import MaterialRepair from './MaterialRepair.vue';
+import ToolLogPanel from '../common/ToolLogPanel.vue';
 import {
-  Box,
   Check,
   Coin,
   Document,
@@ -237,11 +207,11 @@ import {
 
 const CASHIER_PROFILE_NAME = '职工收银平台';
 const DEFAULT_OUTPUT_ROOT = 'E:\\工作区\\收银系统\\运维\\服务器更新';
-const activeModule = ref('cashier');
+const route = useRoute();
+const activeModule = computed(() => (route.query.module === 'material' ? 'material' : 'cashier'));
 const repairFormRef = ref(null);
 const cashierProfile = ref(null);
 const generating = ref(false);
-const logContainer = ref(null);
 const logs = ref([]);
 const selectedOutputs = ref(['workOrder', 'folder', 'repairDoc', 'sql']);
 
@@ -325,16 +295,10 @@ watch(
 
 const addLog = (message, level = 'INFO') => {
   logs.value.push({ level, message, timestamp: new Date().toLocaleString() });
-  nextTick(() => {
-    if (logContainer.value) logContainer.value.scrollTop = logContainer.value.scrollHeight;
-  });
 };
 
 const appendLogs = (items = []) => {
   logs.value.push(...items);
-  nextTick(() => {
-    if (logContainer.value) logContainer.value.scrollTop = logContainer.value.scrollHeight;
-  });
 };
 
 const bindCashierProfile = async () => {
@@ -459,28 +423,6 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: var(--tool-gap-lg);
-}
-
-.repair-switch {
-  display: flex;
-  justify-content: center;
-  gap: 28px;
-}
-
-.switch-button {
-  width: 240px;
-  height: 46px;
-  padding: 0 22px;
-  opacity: 0.78;
-  font-size: 17px;
-  font-weight: 800;
-
-  &.active {
-    opacity: 1;
-    outline: 2px solid rgba(255, 255, 255, 0.92);
-    outline-offset: 2px;
-    box-shadow: 0 5px 16px rgba(15, 23, 42, 0.2);
-  }
 }
 
 .repair-form {

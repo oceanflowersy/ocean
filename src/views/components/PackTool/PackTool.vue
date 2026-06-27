@@ -196,40 +196,27 @@
       <!-- 右侧：日志输出和War包管理 -->
       <div class="right-panel">
         <!-- 日志输出区域 -->
-        <section class="log-section">
-          <div class="log-header">
-            <div class="log-title-group">
-              <h3>{{ rightToolMode === 'log' ? '日志输出' : 'AES 加解密' }}</h3>
-              <div class="right-tool-tabs">
-                <button
-                  :class="{ active: rightToolMode === 'log' }"
-                  @click="rightToolMode = 'log'"
-                >日志</button>
-                <button
-                  :class="{ active: rightToolMode === 'crypto' }"
-                  @click="rightToolMode = 'crypto'"
-                >AES</button>
-              </div>
-            </div>
-            <div v-if="rightToolMode === 'log'" class="log-actions">
+        <ToolLogPanel
+          v-model:mode="rightToolMode"
+          :logs="logs"
+          class="log-section"
+          show-aes
+          @clear="clearLogs"
+        >
+          <template #log-actions>
+            <div class="log-actions">
               <button class="btn-stop" @click="stopBuild">终止</button>
               <button class="btn-clear" @click="clearLogs">清空</button>
             </div>
-            <div v-else class="log-actions">
+          </template>
+          <template #aes-actions>
+            <div class="log-actions">
               <button class="btn-copy-result" @click="copyCryptoResult">复制结果</button>
               <button class="btn-clear" @click="clearCryptoTool">清空</button>
             </div>
-          </div>
-          <div v-if="rightToolMode === 'log'" class="log-container" ref="logContainer">
-            <div
-              v-for="(log, index) in logs"
-              :key="index"
-              :class="['log-item', `log-${log.type}`]"
-            >
-              {{ log.message }}
-            </div>
-          </div>
-          <div v-else class="crypto-tool">
+          </template>
+          <template #aes>
+          <div class="crypto-tool">
             <div class="crypto-field">
               <label>输入</label>
               <textarea
@@ -253,7 +240,8 @@
               ></textarea>
             </div>
           </div>
-        </section>
+          </template>
+        </ToolLogPanel>
 
         <!-- War包管理区域 -->
         <section class="war-files-section">
@@ -404,6 +392,7 @@
 
 <script setup>
 import { ref, computed, onMounted, nextTick, toRaw } from 'vue';
+import ToolLogPanel from '../common/ToolLogPanel.vue';
 
 // 项目列表和当前项目
 const profiles = ref([]);
@@ -451,7 +440,6 @@ const replaceFileForm = ref({
 
 // 日志
 const logs = ref([]);
-const logContainer = ref(null);
 
 // 右侧工具面板
 const rightToolMode = ref('log');
@@ -987,11 +975,6 @@ const buildAll = () => {
 // 日志管理
 const addLog = (type, message) => {
   logs.value.push({ type, message });
-  nextTick(() => {
-    if (logContainer.value) {
-      logContainer.value.scrollTop = logContainer.value.scrollHeight;
-    }
-  });
 };
 
 const clearLogs = () => {
@@ -1980,6 +1963,62 @@ padding-right: 92px;
   flex-direction: column;
   margin-bottom: 0;
   min-height: 0;
+
+  :deep(.shared-log-header) {
+    margin-bottom: 15px;
+  }
+
+  :deep(.shared-log-body) {
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 13px;
+    color: #fff;
+    word-break: break-all;
+    white-space: pre-wrap;
+  }
+
+  .log-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .btn-stop,
+  .btn-clear,
+  .btn-copy-result {
+    min-width: 56px;
+    height: 30px;
+    padding: 0 12px;
+    border: none;
+    border-radius: 4px;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .btn-stop {
+    background: #ff9800;
+
+    &:hover {
+      background: #f57c00;
+    }
+  }
+
+  .btn-clear {
+    background: #ff6b6b;
+
+    &:hover {
+      background: #ee5a52;
+    }
+  }
+
+  .btn-copy-result {
+    background: #4caf50;
+
+    &:hover {
+      background: #45a049;
+    }
+  }
   
   .log-header {
     display: flex;
