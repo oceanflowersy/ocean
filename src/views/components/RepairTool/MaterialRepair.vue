@@ -1,10 +1,10 @@
 <template>
   <div
     v-loading="loading"
-    class="material-repair material-layout"
+    class="material-repair material-layout tool-viewport-layout tool-split-layout"
     :element-loading-text="loadingText"
   >
-    <div class="material-left-column">
+    <div class="material-left-column tool-card-column">
       <section class="tool-card basic-card">
         <h2 class="tool-card-title">
           <el-icon class="title-icon"><Document /></el-icon>
@@ -76,10 +76,10 @@
         </el-table>
       </section>
 
-      <ToolLogPanel :logs="logs" class="material-log-panel" @clear="clearLogs" />
+      <ToolLogPanel :logs="logs" class="material-log-panel tool-log-fill" @clear="clearLogs" />
     </div>
 
-    <div class="material-right-column">
+    <div class="material-right-column tool-card-column">
       <section class="tool-card output-preview-card">
         <h2 class="tool-card-title">
           <el-icon class="title-icon"><Folder /></el-icon>
@@ -149,17 +149,19 @@
         </div>
       </section>
 
-      <div class="material-actions">
-        <button class="tool-action-button tool-action-sunset" :disabled="loading" @click="generate">
-          <el-icon><DocumentAdd /></el-icon>{{ generating ? '生成中...' : '生成物资检修材料' }}
-        </button>
-        <button class="tool-action-button tool-action-green" :disabled="loading" @click="saveSettings">
-          <el-icon><Check /></el-icon>保存配置
-        </button>
-        <button class="tool-action-button tool-action-mix" :disabled="loading" @click="openOutput">
-          <el-icon><FolderOpened /></el-icon>打开输出目录
-        </button>
-      </div>
+      <section class="tool-card action-card">
+        <div class="material-actions tool-action-row">
+          <button class="tool-action-button tool-action-sunset" :disabled="loading" @click="generate">
+            <el-icon><DocumentAdd /></el-icon>{{ generating ? '生成中...' : '生成物资检修材料' }}
+          </button>
+          <button class="tool-action-button tool-action-green" :disabled="loading" @click="saveSettings">
+            <el-icon><Check /></el-icon>保存配置
+          </button>
+          <button class="tool-action-button tool-action-mix" :disabled="loading" @click="openOutput">
+            <el-icon><FolderOpened /></el-icon>打开输出目录
+          </button>
+        </div>
+      </section>
     </div>
   </div>
 </template>
@@ -363,20 +365,7 @@ onUnmounted(() => {
 
 <style scoped lang="scss">
 .material-layout {
-  display: grid;
   grid-template-columns: minmax(0, 1.2fr) minmax(410px, 0.9fr);
-  gap: var(--tool-gap-lg);
-  align-items: stretch;
-  min-height: calc(100vh - 40px);
-}
-
-.material-left-column,
-.material-right-column {
-  display: flex;
-  min-width: 0;
-  min-height: 0;
-  flex-direction: column;
-  gap: var(--tool-gap-lg);
 }
 
 .basic-card,
@@ -549,9 +538,7 @@ onUnmounted(() => {
 }
 
 .material-actions {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
+  --tool-action-columns: 3;
   flex: 0 0 auto;
 }
 

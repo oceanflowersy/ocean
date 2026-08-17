@@ -1,5 +1,5 @@
 <template>
-  <div class="repair-tool tool-page">
+  <div class="repair-tool tool-page tool-fill-page">
     <template v-if="activeModule === 'cashier'">
       <el-form
         ref="repairFormRef"
@@ -101,8 +101,8 @@
             />
         </section>
 
-        <div class="repair-second-row">
-          <div class="settings-column">
+        <div class="repair-second-row tool-split-layout">
+          <div class="settings-column tool-card-column">
             <section class="tool-card settings-card">
               <h2 class="tool-card-title">
                 <el-icon class="title-icon"><Setting /></el-icon>
@@ -163,7 +163,8 @@
               </el-checkbox-group>
             </section>
 
-            <div class="action-row">
+            <section class="tool-card action-card">
+              <div class="action-row tool-action-row">
               <button class="repair-action-button tool-action-button tool-action-sunset" :disabled="generating" @click="generateMaterials">
                 <el-icon><DocumentAdd /></el-icon>
                 {{ generating ? '生成中...' : '生成检修材料' }}
@@ -176,10 +177,11 @@
                 <el-icon><Check /></el-icon>
                 保存配置
               </button>
-            </div>
+              </div>
+            </section>
           </div>
 
-          <ToolLogPanel :logs="logs" class="log-card" @clear="clearLogs" />
+          <ToolLogPanel :logs="logs" class="log-card tool-log-fill" @clear="clearLogs" />
         </div>
       </el-form>
     </template>
@@ -284,15 +286,6 @@ watch(
   },
 );
 
-watch(
-  () => form.outputRoot,
-  async (value) => {
-    if (!value || !window.electronAPI?.getRepairNextVersion) return;
-    const result = await window.electronAPI.getRepairNextVersion(value);
-    if (result?.version) form.version = result.version;
-  },
-);
-
 const addLog = (message, level = 'INFO') => {
   logs.value.push({ level, message, timestamp: new Date().toLocaleString() });
 };
@@ -300,6 +293,17 @@ const addLog = (message, level = 'INFO') => {
 const appendLogs = (items = []) => {
   logs.value.push(...items);
 };
+
+const refreshNextVersion = async (workOrderOutputDir) => {
+  if (!workOrderOutputDir || !window.electronAPI?.getRepairNextVersion) return;
+  const result = await window.electronAPI.getRepairNextVersion(workOrderOutputDir);
+  if (result?.version) form.version = result.version;
+};
+
+watch(
+  () => form.workOrderOutputDir,
+  (value) => refreshNextVersion(value),
+);
 
 const bindCashierProfile = async () => {
   if (!window.electronAPI?.listProfiles) return;
@@ -330,7 +334,10 @@ const selectOutputRoot = async () => {
 
 const selectWorkOrderOutputDir = async () => {
   const selected = await window.electronAPI?.selectDirectory?.(form.workOrderOutputDir);
-  if (selected) form.workOrderOutputDir = selected;
+  if (selected) {
+    form.workOrderOutputDir = selected;
+    await refreshNextVersion(selected);
+  }
 };
 
 const selectDocx = async (field) => {
@@ -412,6 +419,7 @@ const saveRepairSettings = async () => {
 
 onMounted(async () => {
   await bindCashierProfile();
+  await refreshNextVersion(form.workOrderOutputDir);
   addLog(`已绑定项目: ${form.systemName}`);
 });
 </script>
@@ -427,19 +435,21 @@ onMounted(async () => {
 
 .repair-form {
   display: flex;
+  height: calc(100vh - 40px);
+  min-height: 0;
   flex-direction: column;
   gap: var(--tool-gap-lg);
 }
 
 .repair-first-row,
 .repair-second-row {
-  display: grid;
   gap: var(--tool-gap-lg);
-  align-items: stretch;
 }
 
 .repair-first-row {
+  display: grid;
   grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  align-items: stretch;
 }
 
 .repair-second-row {
@@ -480,8 +490,23 @@ onMounted(async () => {
   margin-bottom: 0;
 }
 
+.content-card {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
+.content-card :deep(.el-input),
+.content-card :deep(.el-textarea) {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+}
+
 .content-card :deep(.el-textarea__inner) {
-  min-height: 132px !important;
+  min-height: 0 !important;
+  flex: 1;
   padding: 12px 14px;
   line-height: 1.7;
 }
@@ -533,9 +558,7 @@ onMounted(async () => {
 
 .settings-column,
 .log-card {
-  display: flex;
   min-height: 410px;
-  flex-direction: column;
 }
 
 .settings-card {
@@ -595,11 +618,7 @@ onMounted(async () => {
 }
 
 .action-row {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
-  margin-top: 14px;
-
+  --tool-action-columns: 3;
 }
 
 .repair-action-button {
@@ -661,6 +680,10 @@ onMounted(async () => {
 }
 
 @media (max-width: 760px) {
+  .repair-form {
+    height: auto;
+  }
+
   .repair-first-row,
   .repair-second-row {
     grid-template-columns: 1fr;

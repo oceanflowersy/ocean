@@ -1,12 +1,12 @@
 <template>
-  <div class="pack-tool-container tool-page">
+  <div class="pack-tool-container tool-page tool-fill-page">
     <!-- <header class="header">
       <h1>🚀 WingPack 项目打包工具</h1>
     </header> -->
 
-    <main class="main-content">
+    <main class="main-content tool-viewport-layout">
       <!-- 左侧：配置区域 -->
-      <div class="left-panel" :class="{ 'is-building': isBuilding }">
+      <div class="left-panel tool-card-column" :class="{ 'is-building': isBuilding }">
         <!-- 项目选择器 -->
         <section class="profile-selector">
           <div class="selector-group">
@@ -176,7 +176,7 @@
 
         <!-- 打包操作 -->
         <section class="build-section">
-          <div class="button-group">
+            <div class="button-group tool-action-row">
             <button class="btn-build btn-frontend tool-action-button tool-action-green" @click="buildFrontend">
               📦 打包前台
             </button>
@@ -194,12 +194,12 @@
       </div>
 
       <!-- 右侧：日志输出和War包管理 -->
-      <div class="right-panel">
+      <div class="right-panel tool-card-column">
         <!-- 日志输出区域 -->
         <ToolLogPanel
           v-model:mode="rightToolMode"
           :logs="logs"
-          class="log-section"
+          class="log-section tool-log-fill"
           show-aes
           @clear="clearLogs"
         >
@@ -208,38 +208,6 @@
               <button class="btn-stop" @click="stopBuild">终止</button>
               <button class="btn-clear" @click="clearLogs">清空</button>
             </div>
-          </template>
-          <template #aes-actions>
-            <div class="log-actions">
-              <button class="btn-copy-result" @click="copyCryptoResult">复制结果</button>
-              <button class="btn-clear" @click="clearCryptoTool">清空</button>
-            </div>
-          </template>
-          <template #aes>
-          <div class="crypto-tool">
-            <div class="crypto-field">
-              <label>输入</label>
-              <textarea
-                v-model="cryptoInput"
-                placeholder="输入明文进行加密，或输入 Base64 密文进行解密"
-              ></textarea>
-            </div>
-            <div class="crypto-actions">
-              <button class="btn-encrypt" @click="runAesEncrypt">加密</button>
-              <button class="btn-decrypt" @click="runAesDecrypt">解密</button>
-              <span v-if="cryptoStatus" :class="['crypto-status', cryptoStatus.type]">
-                {{ cryptoStatus.message }}
-              </span>
-            </div>
-            <div class="crypto-field crypto-output-field">
-              <label>结果</label>
-              <textarea
-                v-model="cryptoOutput"
-                readonly
-                placeholder="加密或解密结果会显示在这里"
-              ></textarea>
-            </div>
-          </div>
           </template>
         </ToolLogPanel>
 
@@ -443,9 +411,6 @@ const logs = ref([]);
 
 // 右侧工具面板
 const rightToolMode = ref('log');
-const cryptoInput = ref('');
-const cryptoOutput = ref('');
-const cryptoStatus = ref(null);
 
 // NVM 版本管理
 const nvmVersions = ref([]);
@@ -979,56 +944,6 @@ const addLog = (type, message) => {
 
 const clearLogs = () => {
   logs.value = [];
-};
-
-const setCryptoStatus = (type, message) => {
-  cryptoStatus.value = { type, message };
-  setTimeout(() => {
-    cryptoStatus.value = null;
-  }, 2500);
-};
-
-const runAesEncrypt = async () => {
-  if (!window.electronAPI?.aesEncrypt) {
-    setCryptoStatus('error', 'AES 功能不可用');
-    return;
-  }
-
-  cryptoOutput.value = await window.electronAPI.aesEncrypt(cryptoInput.value);
-  setCryptoStatus('success', cryptoOutput.value ? '加密完成' : '输入为空');
-};
-
-const runAesDecrypt = async () => {
-  if (!window.electronAPI?.aesDecrypt) {
-    setCryptoStatus('error', 'AES 功能不可用');
-    return;
-  }
-
-  cryptoOutput.value = await window.electronAPI.aesDecrypt(cryptoInput.value);
-  setCryptoStatus(
-    cryptoOutput.value ? 'success' : 'warning',
-    cryptoOutput.value ? '解密完成' : '解密失败或输入无效'
-  );
-};
-
-const copyCryptoResult = async () => {
-  if (!cryptoOutput.value) {
-    setCryptoStatus('warning', '没有可复制的结果');
-    return;
-  }
-
-  try {
-    await navigator.clipboard.writeText(cryptoOutput.value);
-    setCryptoStatus('success', '已复制');
-  } catch (e) {
-    setCryptoStatus('error', '复制失败，请手动复制');
-  }
-};
-
-const clearCryptoTool = () => {
-  cryptoInput.value = '';
-  cryptoOutput.value = '';
-  cryptoStatus.value = null;
 };
 
 // 终止打包
@@ -1920,9 +1835,7 @@ padding-right: 92px;
 }
 
 .button-group {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 15px;
+  --tool-action-template: repeat(auto-fit, minmax(200px, 1fr));
 }
 
 .btn-build {
@@ -1964,10 +1877,6 @@ padding-right: 92px;
   margin-bottom: 0;
   min-height: 0;
 
-  :deep(.shared-log-header) {
-    margin-bottom: 15px;
-  }
-
   :deep(.shared-log-body) {
     font-family: 'Consolas', 'Monaco', monospace;
     font-size: 13px;
@@ -1983,8 +1892,7 @@ padding-right: 92px;
   }
 
   .btn-stop,
-  .btn-clear,
-  .btn-copy-result {
+  .btn-clear {
     min-width: 56px;
     height: 30px;
     padding: 0 12px;
@@ -2012,14 +1920,6 @@ padding-right: 92px;
     }
   }
 
-  .btn-copy-result {
-    background: #4caf50;
-
-    &:hover {
-      background: #45a049;
-    }
-  }
-  
   .log-header {
     display: flex;
     justify-content: space-between;
@@ -2104,20 +2004,6 @@ padding-right: 92px;
       }
     }
 
-    .btn-copy-result {
-      padding: 6px 12px;
-      background: #4caf50;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 14px;
-      font-weight: 600;
-
-      &:hover {
-        background: #45a049;
-      }
-    }
   }
 
   .log-container {
@@ -2174,120 +2060,6 @@ padding-right: 92px;
     }
   }
 
-  .crypto-tool {
-    flex: 1;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    padding: 14px;
-    border: 1px solid #e4e7f2;
-    border-radius: 8px;
-    background: #f8f9fc;
-  }
-
-  .crypto-field {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    min-height: 0;
-
-    label {
-      color: #333;
-      font-size: 13px;
-      font-weight: 700;
-    }
-
-    textarea {
-      width: 100%;
-      min-height: 120px;
-      resize: none;
-      padding: 12px;
-      border: 1px solid #d9ddeb;
-      border-radius: 6px;
-      background: white;
-      color: #222;
-      font-family: 'Consolas', 'Monaco', monospace;
-      font-size: 13px;
-      line-height: 1.5;
-      box-sizing: border-box;
-      outline: none;
-
-      &:focus {
-        border-color: #667eea;
-        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.12);
-      }
-
-      &[readonly] {
-        background: #fff;
-      }
-    }
-  }
-
-  .crypto-output-field {
-    flex: 1;
-
-    textarea {
-      flex: 1;
-      min-height: 120px;
-    }
-  }
-
-  .crypto-actions {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    min-height: 36px;
-
-    button {
-      padding: 8px 18px;
-      border: none;
-      border-radius: 6px;
-      color: white;
-      font-size: 14px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: all 0.2s;
-
-      &:hover {
-        transform: translateY(-1px);
-      }
-    }
-
-    .btn-encrypt {
-      background: #667eea;
-
-      &:hover {
-        background: #5568d3;
-      }
-    }
-
-    .btn-decrypt {
-      background: #00a6a6;
-
-      &:hover {
-        background: #008f8f;
-      }
-    }
-  }
-
-  .crypto-status {
-    color: #666;
-    font-size: 13px;
-    font-weight: 600;
-
-    &.success {
-      color: #2e7d32;
-    }
-
-    &.warning {
-      color: #f57c00;
-    }
-
-    &.error {
-      color: #d32f2f;
-    }
-  }
 }
 
 // War包管理区域
